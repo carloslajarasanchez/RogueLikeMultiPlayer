@@ -1070,9 +1070,9 @@ GameObject:
   - component: {fileID: 3123922751723731551}
   - component: {fileID: 6386540948942620270}
   - component: {fileID: 1543516045632788876}
+  - component: {fileID: 3629915979159962673}
   - component: {fileID: 8269247740826165441}
   - component: {fileID: -4734248345182760749}
-  - component: {fileID: 3629915979159962673}
   m_Layer: 9
   m_Name: EnemyFollow
   m_TagString: Enemy
@@ -1167,6 +1167,27 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1.3494637, z: 1.4549156}
   m_Center: {x: 0, y: 0.6983683, z: -0.29658693}
+--- !u!114 &3629915979159962673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4220213403190467802}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 4089434361
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
 --- !u!114 &8269247740826165441
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1210,27 +1231,6 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 80
   m_CollisionDetection: 1
---- !u!114 &3629915979159962673
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4220213403190467802}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 0
-  InScenePlacedSourceGlobalObjectIdHash: 0
-  AlwaysReplicateAsRoot: 0
-  SynchronizeTransform: 1
-  ActiveSceneSynchronization: 0
-  SceneMigrationSynchronization: 1
-  SpawnWithObservers: 1
-  DontDestroyWithOwner: 0
-  AutoObjectParentSync: 1
 --- !u!1 &4303996071402729500
 GameObject:
   m_ObjectHideFlags: 0
