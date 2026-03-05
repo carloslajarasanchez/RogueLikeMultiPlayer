@@ -2,7 +2,7 @@
 - Project name: PruebasRogue
 - Unity version: Unity 2023.2.18f1
 - Active game object:
-  - Name: Player
-  - Tag: Player
-  - Layer: Player
+  - Name: Plane
+  - Tag: Untagged
+  - Layer: Wall
 <!-- UNITY CODE ASSIST INSTRUCTIONS END -->

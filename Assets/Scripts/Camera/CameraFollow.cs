@@ -34,5 +34,11 @@ public class CameraFollow : MonoBehaviour
     private void SetTarget(Transform playerTransform)
     {
         _target = playerTransform; // no necesitamos buscar nada
+
+        transform.position = new Vector3(
+        _target.position.x,
+        _heightOffset,
+        _target.position.z + _zOffset
+    );
     }
 }

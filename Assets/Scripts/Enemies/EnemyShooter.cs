@@ -34,43 +34,46 @@ public class EnemyShooter : Enemy
 
     IEnumerator ShootingRoutine()
     {
+        // Delay inicial aleatorio para que no disparen todos a la vez
+        yield return new WaitForSeconds(Random.Range(0f, 2f));
+
         while (true)
         {
             if (player != null)
-            {
-                // Mirar al jugador antes de disparar
-                Vector3 dir = (player.position - transform.position).normalized;
-                rb.MoveRotation(Quaternion.LookRotation(new Vector3(dir.x, 0, dir.z)));
                 Shoot();
-            }
 
             yield return new WaitForSeconds(1f);
 
-            // Calcular nuevo destino aleatorio
             targetPosition = transform.position + new Vector3(Random.Range(-5, 5), 0, Random.Range(-5, 5));
             isMoving = true;
 
             yield return new WaitForSeconds(fireRate);
             isMoving = false;
-            rb.velocity = Vector3.zero; // Detenerse al llegar
+            rb.velocity = Vector3.zero;
         }
     }
 
     void FixedUpdate()
     {
+        // Siempre mirar al jugador
+        if (player != null)
+        {
+            Vector3 dir = (player.position - transform.position).normalized;
+            dir.y = 0;
+            Quaternion lookRotation = Quaternion.LookRotation(dir);
+            rb.MoveRotation(lookRotation);
+        }
+
+        // Movimiento
         if (isMoving)
         {
             Vector3 direction = (targetPosition - transform.position).normalized;
             direction.y = 0;
-
             Vector3 newPos = transform.position + direction * speed * Time.fixedDeltaTime;
             rb.MovePosition(newPos);
 
-            // Si llegamos muy cerca del destino, dejamos de movernos
             if (Vector3.Distance(transform.position, targetPosition) < 0.5f)
-            {
                 isMoving = false;
-            }
         }
     }
 
@@ -83,6 +86,12 @@ public class EnemyShooter : Enemy
                 b.transform.position = firePoint.position;
                 b.transform.rotation = firePoint.rotation;
                 b.SetActive(true);
+
+                // Llamamos a Launch para aplicar la velocidad
+                Projectile projectile = b.GetComponent<Projectile>();
+                if (projectile != null)
+                    projectile.Launch(firePoint.forward);
+
                 return;
             }
         }
