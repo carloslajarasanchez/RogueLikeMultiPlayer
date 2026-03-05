@@ -19,8 +19,8 @@ TagManager:
   - Water
   - UI
   - DashingPlayer
-  - 
-  - Bullet
+  - PlayerBullet
+  - EnemyBullet
   - Enemy
   - Floor
   - Doors
@@ -28,7 +28,7 @@ TagManager:
   - Controller
   - EnemySpawn
   - Rooms
-  - 
+  - Bullet
   - 
   - 
   - 

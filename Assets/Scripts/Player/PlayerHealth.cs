@@ -1,76 +1,115 @@
 using System.Collections;
 using UnityEngine;
+using Unity.Netcode;
 
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealth : NetworkBehaviour
 {
     [Header("Configuración")]
     [SerializeField] private int _maxHearts = 3;
     [SerializeField] private float _iFramesDuration = 1.5f;
     [SerializeField] private float _blinkInterval = 0.1f;
 
-    private int _currentHearts;
+    private NetworkVariable<int> _currentHearts = new NetworkVariable<int>(
+        3,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     private bool _isInvincible = false;
     private Renderer[] _renderers;
 
-    // Evento para notificar a la UI
-    public event System.Action<int, int> OnHealthChanged; // currentHearts, maxHearts
+    public event System.Action<int, int> OnHealthChanged;
     public event System.Action OnDeath;
 
     private void Awake()
     {
-        _currentHearts = _maxHearts;
         _renderers = GetComponentsInChildren<Renderer>();
     }
 
-    private void Start()
+    public override void OnNetworkSpawn()
     {
-        // Notificamos a la UI al inicio para que muestre los corazones
-        OnHealthChanged?.Invoke(_currentHearts, _maxHearts);
+        _currentHearts.OnValueChanged += OnHeartsChanged;
+        OnHealthChanged?.Invoke(_currentHearts.Value, _maxHearts);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        _currentHearts.OnValueChanged -= OnHeartsChanged;
+    }
+
+    private void OnHeartsChanged(int previous, int current)
+    {
+        OnHealthChanged?.Invoke(current, _maxHearts);
     }
 
     public void TakeDamage(int amount = 1)
     {
         if (_isInvincible) return;
 
-        _currentHearts -= amount;
-        _currentHearts = Mathf.Clamp(_currentHearts, 0, _maxHearts);
+        if (IsServer)
+            ApplyDamage(amount);
+        else
+            TakeDamageServerRpc(amount);
+    }
 
-        OnHealthChanged?.Invoke(_currentHearts, _maxHearts);
+    [ServerRpc(RequireOwnership = false)]
+    private void TakeDamageServerRpc(int amount)
+    {
+        ApplyDamage(amount);
+    }
 
-        if (_currentHearts <= 0)
+    private void ApplyDamage(int amount)
+    {
+        _currentHearts.Value -= amount;
+        _currentHearts.Value = Mathf.Clamp(_currentHearts.Value, 0, _maxHearts);
+
+        if (_currentHearts.Value <= 0)
         {
             Die();
             return;
         }
 
+        TriggerIFramesClientRpc();
+    }
+
+    [ClientRpc]
+    private void TriggerIFramesClientRpc()
+    {
+        if (!IsOwner) return;
         StartCoroutine(IFramesRoutine());
     }
 
     public void Heal(int amount = 1)
     {
-        _currentHearts += amount;
-        _currentHearts = Mathf.Clamp(_currentHearts, 0, _maxHearts);
-        OnHealthChanged?.Invoke(_currentHearts, _maxHearts);
+        if (!IsServer) return;
+        _currentHearts.Value += amount;
+        _currentHearts.Value = Mathf.Clamp(_currentHearts.Value, 0, _maxHearts);
     }
 
     private void Die()
     {
-        Debug.Log("<color=red>Jugador muerto.</color>");
         OnDeath?.Invoke();
-        // Aquí después añadiremos la lógica de game over
         gameObject.SetActive(false);
+    }
+
+    public void SetInvincible(bool invincible)
+    {
+        _isInvincible = invincible;
+        if (!invincible)
+        {
+            foreach (Renderer r in _renderers)
+                r.enabled = true;
+        }
     }
 
     private IEnumerator IFramesRoutine()
     {
         _isInvincible = true;
-
         float elapsed = 0f;
         bool visible = true;
 
         while (elapsed < _iFramesDuration)
         {
-            // Alternar visibilidad para el parpadeo
             visible = !visible;
             foreach (Renderer r in _renderers)
                 r.enabled = visible;
@@ -79,23 +118,9 @@ public class PlayerHealth : MonoBehaviour
             elapsed += _blinkInterval;
         }
 
-        // Aseguramos que el jugador queda visible al final
         foreach (Renderer r in _renderers)
             r.enabled = true;
 
         _isInvincible = false;
-    }
-
-    // Añade este método al PlayerHealth que ya tienes
-    public void SetInvincible(bool invincible)
-    {
-        _isInvincible = invincible;
-
-        // Si dejamos de ser invencibles nos aseguramos de quedar visibles
-        if (!invincible)
-        {
-            foreach (Renderer r in _renderers)
-                r.enabled = true;
-        }
     }
 }

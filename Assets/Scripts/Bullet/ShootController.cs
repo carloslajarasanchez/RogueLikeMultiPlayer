@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
-public class ShootController : MonoBehaviour
+public class ShootController : NetworkBehaviour
 {
     [Header("Referencias")]
     public GameObject bulletPrefab;
@@ -15,7 +16,13 @@ public class ShootController : MonoBehaviour
     [SerializeField] private int poolSize = 15;
     private List<GameObject> bulletPool;
 
-    void Start()
+    public override void OnNetworkSpawn()
+    {
+        if (!IsOwner) return;
+        InitPool();
+    }
+
+    private void InitPool()
     {
         bulletPool = new List<GameObject>();
         for (int i = 0; i < poolSize; i++)
@@ -28,32 +35,36 @@ public class ShootController : MonoBehaviour
 
     void Update()
     {
+        if (!IsOwner) return;
+
         if (Input.GetButton("Fire1") && Time.time >= nextFireTime)
         {
-            Shoot();
+            ShootServerRpc(firePoint.position, firePoint.rotation, firePoint.forward);
             nextFireTime = Time.time + fireRate;
         }
     }
 
-    private void Shoot()
+    [ServerRpc]
+    private void ShootServerRpc(Vector3 position, Quaternion rotation, Vector3 direction)
     {
-        GameObject bullet = GetPooledBullet();
-        if (bullet == null) return;
+        GameObject bullet = Instantiate(bulletPrefab, position, rotation);
+        bullet.GetComponent<NetworkObject>().Spawn();
 
-        bullet.transform.position = firePoint.position;
-        bullet.transform.rotation = firePoint.rotation;
-        bullet.SetActive(true);
-
-        // Usamos Launch en lugar de AddForce directo
         Projectile projectile = bullet.GetComponent<Projectile>();
         if (projectile != null)
-            projectile.Launch(firePoint.forward);
+        {
+            Collider ownerCollider = GetComponent<Collider>();
+            projectile.Launch(direction, ownerCollider);
+        }
     }
 
     private GameObject GetPooledBullet()
     {
         foreach (GameObject bullet in bulletPool)
+        {
+            if (bullet == null) continue;
             if (!bullet.activeInHierarchy) return bullet;
+        }
         return null;
     }
 }

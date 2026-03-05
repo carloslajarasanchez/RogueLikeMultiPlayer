@@ -1,44 +1,60 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
     [Header("Cam Settings")]
-    [SerializeField] private float _lerpSpeed = 5f;    // Qué tan suave es el seguimiento
-    [SerializeField] private float _heightOffset = 5f; // El offset constante en el eje Y
-    [SerializeField] private float _zOffset = -5f; // El offset constante en el eje Y
+    [SerializeField] private float _lerpSpeed = 5f;
+    [SerializeField] private float _heightOffset = 5f;
+    [SerializeField] private float _zOffset = -5f;
 
-    private Transform _target;        // El transform de tu jugador
+    private Transform _target;
 
     private void Awake()
     {
-        Main.CustomEvents.OnPlayerSpawned?.AddListener(SetTarget);
+        Main.CustomEvents.OnLocalPlayerSpawned.AddListener(SetTarget);
+    }
+
+    private void Start()
+    {
+        if (_target == null)
+        {
+            PlayerController player = FindFirstObjectByType<PlayerController>();
+            if (player != null && player.IsOwner)
+                SetTarget(player.transform);
+        }
     }
 
     void FixedUpdate()
     {
         if (_target == null) return;
 
-        // 1. Creamos el vector de destino
-        // Mantenemos X y Z del jugador, pero fijamos la Y con nuestro offset
-        Vector3 targetPosition = new Vector3(_target.position.x, _heightOffset, _target.position.z + _zOffset);
+        Vector3 targetPosition = new Vector3(
+            _target.position.x,
+            _heightOffset,
+            _target.position.z + _zOffset
+        );
 
-        // 2. Aplicamos una interpolación lineal (Lerp) para que el movimiento sea fluido
-        Vector3 smoothedPosition = Vector3.Lerp(transform.position, targetPosition, _lerpSpeed * Time.deltaTime);
+        Vector3 smoothedPosition = Vector3.Lerp(
+            transform.position, targetPosition, _lerpSpeed * Time.deltaTime);
 
-        // 3. Aplicamos la posición final a la cámara
         transform.position = smoothedPosition;
     }
 
     private void SetTarget(Transform playerTransform)
     {
-        _target = playerTransform; // no necesitamos buscar nada
+        PlayerController pc = playerTransform.GetComponent<PlayerController>();
+        if (pc != null && !pc.IsOwner) return;
 
+        _target = playerTransform;
         transform.position = new Vector3(
-        _target.position.x,
-        _heightOffset,
-        _target.position.z + _zOffset
-    );
+            _target.position.x,
+            _heightOffset,
+            _target.position.z + _zOffset
+        );
+    }
+
+    private void OnDestroy()
+    {
+        Main.CustomEvents.OnLocalPlayerSpawned.RemoveListener(SetTarget);
     }
 }

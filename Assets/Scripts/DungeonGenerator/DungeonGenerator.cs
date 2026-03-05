@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 
@@ -28,18 +29,15 @@ public class DungeonGenerator : NetworkBehaviour
     [SerializeField] private GameObject _playerPrefab;
 
     private Dictionary<Vector2Int, RoomData> _map = new Dictionary<Vector2Int, RoomData>();
+    private List<Vector3> _spawnPositions = new List<Vector3>();
 
     private static readonly Vector2Int DirTop = Vector2Int.up;
     private static readonly Vector2Int DirBottom = Vector2Int.down;
     private static readonly Vector2Int DirLeft = Vector2Int.left;
     private static readonly Vector2Int DirRight = Vector2Int.right;
 
-    // Guardamos las posiciones de spawn para los jugadores
-    private List<Vector3> _spawnPositions = new List<Vector3>();
-
     public override void OnNetworkSpawn()
     {
-        // Solo el host genera el mapa
         if (!IsHost) return;
 
         _library.Initialize();
@@ -145,12 +143,10 @@ public class DungeonGenerator : NetworkBehaviour
     // ──────────────────────────────────────────────────────
     private void InstantiateMap()
     {
-        RoomTemplates templates = FindObjectOfType<RoomTemplates>();
-
+        RoomTemplates templates = FindFirstObjectByType<RoomTemplates>();
         float stepX = _roomWidth + _corridorLength;
         float stepZ = _roomHeight + _corridorLength;
 
-        // Guardamos todas las posiciones de sala para los spawns
         _spawnPositions.Clear();
 
         foreach (var kvp in _map)
@@ -166,19 +162,21 @@ public class DungeonGenerator : NetworkBehaviour
 
             _spawnPositions.Add(worldPos);
 
-            // — Sala — usamos NetworkObject.Spawn para sincronizar
             string key = room.GetPrefabKey();
             GameObject prefab = _library.GetPrefab(key);
             if (prefab == null) continue;
 
+            // Host instancia localmente
             GameObject go = Instantiate(prefab, worldPos, Quaternion.identity);
             go.name = $"Room_{gridPos.x}_{gridPos.y}_{key}";
             if (room.Type == RoomType.Start) go.name += "_START";
             if (room.Type == RoomType.End) go.name += "_END";
-
-            // Spawneamos en red para que los clientes lo vean
-            go.GetComponent<NetworkObject>().Spawn();
             templates?.Rooms.Add(go);
+
+            // Clientes instancian la misma sala
+            SpawnRoomClientRpc(key, worldPos,
+                room.Type == RoomType.Start,
+                room.Type == RoomType.End);
 
             // — Pasillo Norte-Sur (Top) —
             if (room.DoorTop && _corridorV != null)
@@ -188,8 +186,8 @@ public class DungeonGenerator : NetworkBehaviour
                     0.5f,
                     _roomHeight / 2f + _corridorLength / 2f + _corridorPivotCorrection
                 );
-                GameObject corridor = Instantiate(_corridorV, corridorPos, Quaternion.identity);
-                corridor.GetComponent<NetworkObject>().Spawn();
+                Instantiate(_corridorV, corridorPos, Quaternion.identity);
+                SpawnCorridorClientRpc(corridorPos, true);
             }
 
             // — Pasillo Este-Oeste (Right) —
@@ -200,18 +198,44 @@ public class DungeonGenerator : NetworkBehaviour
                     0.5f,
                     _corridorOffsetZ
                 );
-                GameObject corridor = Instantiate(_corridorH, corridorPos, Quaternion.identity);
-                corridor.GetComponent<NetworkObject>().Spawn();
+                Instantiate(_corridorH, corridorPos, Quaternion.identity);
+                SpawnCorridorClientRpc(corridorPos, false);
             }
         }
     }
 
+    [ClientRpc]
+    private void SpawnRoomClientRpc(string key, Vector3 position, bool isStart, bool isEnd)
+    {
+        if (IsHost) return;
+
+        _library.Initialize();
+        RoomTemplates templates = FindFirstObjectByType<RoomTemplates>();
+        GameObject prefab = _library.GetPrefab(key);
+        if (prefab == null) return;
+
+        GameObject go = Instantiate(prefab, position, Quaternion.identity);
+        go.name = $"Room_{key}";
+        if (isStart) go.name += "_START";
+        if (isEnd) go.name += "_END";
+        templates?.Rooms.Add(go);
+    }
+
+    [ClientRpc]
+    private void SpawnCorridorClientRpc(Vector3 position, bool isVertical)
+    {
+        if (IsHost) return;
+
+        GameObject prefab = isVertical ? _corridorV : _corridorH;
+        if (prefab == null) return;
+        Instantiate(prefab, position, Quaternion.identity);
+    }
+
     // ──────────────────────────────────────────────────────
-    // PASO 5 — Spawn de jugadores en posiciones distintas
+    // PASO 5 — Spawn de jugadores
     // ──────────────────────────────────────────────────────
     private void SpawnPlayers()
     {
-        // Cogemos las posiciones más alejadas entre sí para separar jugadores
         List<Vector3> playerSpawns = GetSpreadSpawnPoints(
             NetworkManager.Singleton.ConnectedClients.Count);
 
@@ -231,8 +255,6 @@ public class DungeonGenerator : NetworkBehaviour
 
     private List<Vector3> GetSpreadSpawnPoints(int count)
     {
-        // Ordenamos las posiciones por distancia al centro
-        // y cogemos las más alejadas para separar jugadores
         List<Vector3> sorted = new List<Vector3>(_spawnPositions);
         sorted.Sort((a, b) =>
             Vector3.Distance(b, Vector3.zero).CompareTo(Vector3.Distance(a, Vector3.zero)));

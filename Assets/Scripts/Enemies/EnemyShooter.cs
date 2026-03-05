@@ -13,15 +13,16 @@ public class EnemyShooter : Enemy
     private Vector3 targetPosition;
     private bool isMoving = false;
 
-    // Variables de pooling (reutilizando tu lógica anterior)
     [SerializeField] private int poolSize = 5;
     private List<GameObject> myPool = new List<GameObject>();
+
+    private float _updateTargetInterval = 1f;
+    private float _nextUpdateTime = 0f;
 
     protected override void Start()
     {
         base.Start();
 
-        // Inicializar Pool
         for (int i = 0; i < poolSize; i++)
         {
             GameObject b = Instantiate(bulletPrefab);
@@ -34,7 +35,6 @@ public class EnemyShooter : Enemy
 
     IEnumerator ShootingRoutine()
     {
-        // Delay inicial aleatorio para que no disparen todos a la vez
         yield return new WaitForSeconds(Random.Range(0f, 2f));
 
         while (true)
@@ -44,7 +44,8 @@ public class EnemyShooter : Enemy
 
             yield return new WaitForSeconds(1f);
 
-            targetPosition = transform.position + new Vector3(Random.Range(-5, 5), 0, Random.Range(-5, 5));
+            targetPosition = transform.position + new Vector3(
+                Random.Range(-5, 5), 0, Random.Range(-5, 5));
             isMoving = true;
 
             yield return new WaitForSeconds(fireRate);
@@ -55,16 +56,19 @@ public class EnemyShooter : Enemy
 
     void FixedUpdate()
     {
-        // Siempre mirar al jugador
+        if (Time.time >= _nextUpdateTime)
+        {
+            FindClosestPlayer();
+            _nextUpdateTime = Time.time + _updateTargetInterval;
+        }
+
         if (player != null)
         {
             Vector3 dir = (player.position - transform.position).normalized;
             dir.y = 0;
-            Quaternion lookRotation = Quaternion.LookRotation(dir);
-            rb.MoveRotation(lookRotation);
+            rb.MoveRotation(Quaternion.LookRotation(dir));
         }
 
-        // Movimiento
         if (isMoving)
         {
             Vector3 direction = (targetPosition - transform.position).normalized;
@@ -87,7 +91,6 @@ public class EnemyShooter : Enemy
                 b.transform.rotation = firePoint.rotation;
                 b.SetActive(true);
 
-                // Llamamos a Launch para aplicar la velocidad
                 Projectile projectile = b.GetComponent<Projectile>();
                 if (projectile != null)
                     projectile.Launch(firePoint.forward);

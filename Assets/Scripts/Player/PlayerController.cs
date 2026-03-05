@@ -27,28 +27,50 @@ public class PlayerController : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // Solo inicializamos el input si somos el jugador local
-        if (!IsOwner) return;
+        if (IsOwner)
+            StartCoroutine(InitDelayed());
 
+        NotifySpawnedClientRpc();
+    }
+
+    private IEnumerator InitDelayed()
+    {
+        yield return null;
         _rigidbody = GetComponent<Rigidbody>();
         _playerHealth = GetComponent<PlayerHealth>();
-
-        if (_mainCam == null) _mainCam = Camera.main;
         _rigidbody.constraints = RigidbodyConstraints.FreezeRotationX
                                | RigidbodyConstraints.FreezeRotationZ;
-
         _normalLayer = gameObject.layer;
         _dashingLayer = LayerMask.NameToLayer("DashingPlayer");
+        _mainCam = Camera.main;
 
-        // Notificamos a la cámara que el jugador local ha spawneado
-        Main.CustomEvents.OnPlayerSpawned?.Invoke(transform);
+        Main.CustomEvents.OnLocalPlayerSpawned?.Invoke(transform);
+    }
+
+    [ClientRpc]
+    private void NotifySpawnedClientRpc()
+    {
+        StartCoroutine(NotifyDelayed());
+    }
+
+    private IEnumerator NotifyDelayed()
+    {
+        // Esperamos 2 frames para que la UI esté lista
+        yield return null;
+        yield return null;
+        Main.CustomEvents.OnAnyPlayerSpawned?.Invoke(transform);
     }
 
     void Update()
     {
-        // Solo procesamos input si somos el dueño de este objeto
         if (!IsOwner) return;
         if (_isDashing) return;
+
+        if (_mainCam == null)
+        {
+            _mainCam = Camera.main;
+            return;
+        }
 
         _moveInput.x = Input.GetAxisRaw("Horizontal");
         _moveInput.z = Input.GetAxisRaw("Vertical");
@@ -76,6 +98,7 @@ public class PlayerController : NetworkBehaviour
     void FixedUpdate()
     {
         if (!IsOwner) return;
+        if (_rigidbody == null) return;
 
         if (_isDashing)
         {
