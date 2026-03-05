@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5189983545dfd784cb4f998403bf75ba, type: 3}
+  m_Name: RoomPrefabLibrary
+  m_EditorClassIdentifier: 
+  entries:
+  - key: B
+    prefab: {fileID: 7359414003755521883, guid: fd3a7fa7520b9d540b72e07cceda46bc, type: 3}
+  - key: T
+    prefab: {fileID: 4967767720534961900, guid: b23e07abe39f80d4d9137a3ffadf298f, type: 3}
+  - key: L
+    prefab: {fileID: 3035925835137835804, guid: 185e8a701c2ffe44da724a8edaac74ce, type: 3}
+  - key: R
+    prefab: {fileID: 2355675954880004663, guid: 1e7fc17c0b55d84408e2ec63eb357703, type: 3}
+  - key: TB
+    prefab: {fileID: 4162636790762322447, guid: 58d47db2a8b99a048a6c21d0d553d742, type: 3}
+  - key: TR
+    prefab: {fileID: 3279218554099362318, guid: a0de1e416991eb443ad62e44dfc8870e, type: 3}
+  - key: TL
+    prefab: {fileID: 2524107066637644867, guid: ce13eee09d280d042b8be225ad8ff26d, type: 3}
+  - key: BL
+    prefab: {fileID: 8293592443411257171, guid: 9c16b39b11a6fdd479073a7a4b294eb0, type: 3}
+  - key: BR
+    prefab: {fileID: 834920250593078079, guid: ae2929b2de41e044591a25dae97eb6d3, type: 3}
+  - key: LR
+    prefab: {fileID: 9206051544078095080, guid: 4303dd91932e4a64c9823fe801f5ab6c, type: 3}
+  - key: TBL
+    prefab: {fileID: 4162636790762322447, guid: 28395c3a4ab04644b90dd913dc6ce48c, type: 3}
+  - key: TBR
+    prefab: {fileID: 1394757193539143551, guid: 28f4ae9a9523f4949a8523ed1343fb41, type: 3}
+  - key: TLR
+    prefab: {fileID: 1394757193539143551, guid: 15d0f7a484c07c44a8ca5c398df9e395, type: 3}
+  - key: BLR
+    prefab: {fileID: 1394757193539143551, guid: 3a8786bef06e4a44a9491801b29be822, type: 3}
+  - key: TBLR
+    prefab: {fileID: 1394757193539143551, guid: 86dd5bc28d4a4454d83b55f52de3f5a0, type: 3}
+  - key: CloseR
+    prefab: {fileID: 7252610820415753090, guid: fe11ec49271a8204da1d36d016ad9927, type: 3}
