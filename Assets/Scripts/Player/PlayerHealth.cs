@@ -89,6 +89,12 @@ public class PlayerHealth : NetworkBehaviour
     private void Die()
     {
         OnDeath?.Invoke();
+        DieClientRpc();
+    }
+
+    [ClientRpc]
+    private void DieClientRpc()
+    {
         gameObject.SetActive(false);
     }
 
