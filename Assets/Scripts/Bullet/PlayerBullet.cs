@@ -1,6 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
 public class PlayerBullet : Projectile
 {
@@ -9,20 +8,24 @@ public class PlayerBullet : Projectile
         Enemy target = other.gameObject.GetComponent<Enemy>();
         if (target != null)
         {
-            target.TakeDamage();
-
-            // Cancelamos la velocidad de la bala al impactar
-            // para que no empuje tanto
-            Rigidbody targetRb = other.gameObject.GetComponent<Rigidbody>();
-            if (targetRb != null)
-            {
-                Vector3 knockback = other.contacts[0].normal * -1f; // dirección del impacto
-                targetRb.velocity = Vector3.zero;
-                targetRb.AddForce(knockback * 3f, ForceMode.Impulse); // ajusta el 3f a tu gusto
-            }
+            NetworkObject netObj = target.GetComponent<NetworkObject>();
+            if (netObj != null)
+                RequestDamageServerRpc(netObj.NetworkObjectId);
 
             Deactivate();
+            return;
         }
         Deactivate();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestDamageServerRpc(ulong targetNetworkId)
+    {
+        if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects
+            .TryGetValue(targetNetworkId, out NetworkObject netObj)) return;
+
+        Enemy target = netObj.GetComponent<Enemy>();
+        if (target != null)
+            target.TakeDamage();
     }
 }

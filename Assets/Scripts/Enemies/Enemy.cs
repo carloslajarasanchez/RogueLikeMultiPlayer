@@ -16,11 +16,9 @@ public abstract class Enemy : NetworkBehaviour
         FindClosestPlayer();
     }
 
-    // Busca el jugador más cercano en lugar del primero
     protected void FindClosestPlayer()
     {
         PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
-
         float closestDistance = float.MaxValue;
         Transform closestPlayer = null;
 
@@ -33,12 +31,12 @@ public abstract class Enemy : NetworkBehaviour
                 closestPlayer = p.transform;
             }
         }
-
         player = closestPlayer;
     }
 
     public void TakeDamage()
     {
+        if (!IsServer) return;
         health--;
         if (health <= 0) Die();
     }
@@ -46,6 +44,7 @@ public abstract class Enemy : NetworkBehaviour
     public virtual void Die()
     {
         OnDeath?.Invoke(this.gameObject);
-        Destroy(this.gameObject);
+        if (IsServer)
+            GetComponent<NetworkObject>().Despawn(true);
     }
 }

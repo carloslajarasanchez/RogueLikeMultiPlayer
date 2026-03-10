@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 7f897ab3ce72dbf4d82ac43e3f24f41e
+guid: 11ea691390b572c4e8f97acd98353dcc
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Dungeon
+  - Pixelout Personal Use Only
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

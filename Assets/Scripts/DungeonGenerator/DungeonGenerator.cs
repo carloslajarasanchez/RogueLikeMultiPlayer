@@ -28,6 +28,8 @@ public class DungeonGenerator : NetworkBehaviour
     [Header("Player")]
     [SerializeField] private GameObject _playerPrefab;
 
+    public static DungeonGenerator Instance { get; private set; }
+
     private Dictionary<Vector2Int, RoomData> _map = new Dictionary<Vector2Int, RoomData>();
     private List<Vector3> _spawnPositions = new List<Vector3>();
 
@@ -35,6 +37,52 @@ public class DungeonGenerator : NetworkBehaviour
     private static readonly Vector2Int DirBottom = Vector2Int.down;
     private static readonly Vector2Int DirLeft = Vector2Int.left;
     private static readonly Vector2Int DirRight = Vector2Int.right;
+
+    // Diccionario de puertas registradas por ID
+    private Dictionary<int, DoorTrigger> _doorRegistry = new Dictionary<int, DoorTrigger>();
+    private int _nextDoorId = 0;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
+    // Llamado por RoomController en Start (solo servidor)
+    public int RegisterDoor(DoorTrigger door)
+    {
+        int id = _nextDoorId++;
+        _doorRegistry[id] = door;
+        door.NetworkDoorId = id;
+        return id;
+    }
+
+    public void SyncOpenDoor(int doorId, bool enteringRoom)
+    {
+        OpenDoorClientRpc(doorId, enteringRoom);
+    }
+
+    public void SyncCloseDoor(int doorId)
+    {
+        CloseDoorClientRpc(doorId);
+    }
+
+    [ClientRpc]
+    private void OpenDoorClientRpc(int doorId, bool enteringRoom)
+    {
+        if (IsServer) return;
+        if (_doorRegistry.TryGetValue(doorId, out DoorTrigger door))
+            door.OpenDoor(enteringRoom);
+    }
+
+    [ClientRpc]
+    private void CloseDoorClientRpc(int doorId)
+    {
+        if (IsServer) return;
+        if (_doorRegistry.TryGetValue(doorId, out DoorTrigger door))
+            door.CloseDoor();
+    }
+
+    
 
     public override void OnNetworkSpawn()
     {
@@ -166,19 +214,16 @@ public class DungeonGenerator : NetworkBehaviour
             GameObject prefab = _library.GetPrefab(key);
             if (prefab == null) continue;
 
-            // Host instancia localmente
             GameObject go = Instantiate(prefab, worldPos, Quaternion.identity);
             go.name = $"Room_{gridPos.x}_{gridPos.y}_{key}";
             if (room.Type == RoomType.Start) go.name += "_START";
             if (room.Type == RoomType.End) go.name += "_END";
             templates?.Rooms.Add(go);
 
-            // Clientes instancian la misma sala
             SpawnRoomClientRpc(key, worldPos,
                 room.Type == RoomType.Start,
                 room.Type == RoomType.End);
 
-            // — Pasillo Norte-Sur (Top) —
             if (room.DoorTop && _corridorV != null)
             {
                 Vector3 corridorPos = worldPos + new Vector3(
@@ -190,7 +235,6 @@ public class DungeonGenerator : NetworkBehaviour
                 SpawnCorridorClientRpc(corridorPos, true);
             }
 
-            // — Pasillo Este-Oeste (Right) —
             if (room.DoorRight && _corridorH != null)
             {
                 Vector3 corridorPos = worldPos + new Vector3(
@@ -264,6 +308,45 @@ public class DungeonGenerator : NetworkBehaviour
             result.Add(sorted[i]);
 
         return result;
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Spawn de enemigos para RoomController
+    // ──────────────────────────────────────────────────────
+    public void SpawnEnemiesForRoom(
+        GameObject[] prefabs,
+        List<Transform> spawnPoints,
+        System.Action<GameObject> onEnemySpawned)
+    {
+        foreach (Transform sp in spawnPoints)
+        {
+            GameObject prefab = prefabs[Random.Range(0, prefabs.Length)];
+            GameObject enemy = Instantiate(prefab, sp.position, Quaternion.identity);
+
+            NetworkObject netObj = enemy.GetComponent<NetworkObject>();
+            if (netObj != null)
+                netObj.Spawn();
+
+            onEnemySpawned?.Invoke(enemy);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Posiciones de respawn
+    // ──────────────────────────────────────────────────────
+    public Vector3 GetRandomRespawnPosition(Vector3 excludePosition)
+    {
+        if (_spawnPositions.Count == 0) return Vector3.up;
+
+        List<Vector3> candidates = new List<Vector3>(_spawnPositions);
+
+        if (candidates.Count > 1)
+            candidates.RemoveAll(p => Vector3.Distance(p, excludePosition) < 5f);
+
+        if (candidates.Count == 0)
+            return _spawnPositions[Random.Range(0, _spawnPositions.Count)] + Vector3.up;
+
+        return candidates[Random.Range(0, candidates.Count)] + Vector3.up;
     }
 
     // ──────────────────────────────────────────────────────

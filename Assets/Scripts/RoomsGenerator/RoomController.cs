@@ -7,8 +7,7 @@ public class RoomController : MonoBehaviour
     [Header("Configuración")]
     public GameObject[] enemyPrefabs;
     public Transform[] spawnPoints;
-    public List<DoorTrigger> doorsInRoom; // <- ahora es DoorTrigger
-
+    public List<DoorTrigger> doorsInRoom;
     [SerializeField] private float _doorCloseDelay = 0.5f;
 
     private List<GameObject> _enemiesAlive = new List<GameObject>();
@@ -18,15 +17,20 @@ public class RoomController : MonoBehaviour
     private void Start()
     {
         foreach (var door in doorsInRoom)
-            if (door != null) door.Init(this);
+        {
+            if (door == null) continue;
+            door.Init(this);
+
+            // Registrar en DungeonGenerator para sincronización en red
+            if (DungeonGenerator.Instance != null)
+                DungeonGenerator.Instance.RegisterDoor(door);
+        }
     }
 
-    private void OnTriggerEnter(Collider other)
+    public void TryActivateRoom()
     {
-        if (!other.CompareTag("Player")) return;
         if (_roomCleared) return;
         if (_roomActive) return;
-
         StartCoroutine(StartRoomSequence());
     }
 
@@ -37,36 +41,50 @@ public class RoomController : MonoBehaviour
         yield return new WaitForSeconds(_doorCloseDelay);
 
         foreach (var door in doorsInRoom)
-            if (door != null) door.CloseDoor();
+        {
+            if (door == null) continue;
+            door.CloseDoor(); // local (servidor)
+            DungeonGenerator.Instance?.SyncCloseDoor(door.NetworkDoorId); // clientes
+        }
 
         yield return new WaitForSeconds(0.5f);
 
         List<Transform> availablePoints = new List<Transform>(spawnPoints);
         int amount = Mathf.Min(Random.Range(2, 6), availablePoints.Count);
 
+        List<Transform> selectedPoints = new List<Transform>();
         for (int i = 0; i < amount; i++)
         {
             int randomIndex = Random.Range(0, availablePoints.Count);
-            Transform sp = availablePoints[randomIndex];
+            selectedPoints.Add(availablePoints[randomIndex]);
             availablePoints.RemoveAt(randomIndex);
+        }
 
-            GameObject prefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
-            GameObject enemy = Instantiate(prefab, sp.position, Quaternion.identity);
+        if (DungeonGenerator.Instance != null)
+            DungeonGenerator.Instance.SpawnEnemiesForRoom(
+                enemyPrefabs, selectedPoints, OnEnemySpawned);
+    }
 
-            Enemy health = enemy.GetComponent<Enemy>();
-            if (health != null)
-            {
-                health.OnDeath += OnEnemyDefeated;
-                _enemiesAlive.Add(enemy);
-            }
+    private void OnEnemySpawned(GameObject enemy)
+    {
+        Enemy enemyScript = enemy.GetComponent<Enemy>();
+        if (enemyScript != null)
+        {
+            enemyScript.OnDeath += OnEnemyDefeated;
+            _enemiesAlive.Add(enemy);
         }
     }
 
     public void RequestDoorOpen(DoorTrigger door)
     {
+        // Solo el servidor gestiona la apertura de puertas
+        if (Unity.Netcode.NetworkManager.Singleton != null &&
+            !Unity.Netcode.NetworkManager.Singleton.IsServer) return;
+
         if (_roomActive) return;
         bool enteringRoom = !_roomCleared;
         door.OpenDoor(enteringRoom);
+        DungeonGenerator.Instance?.SyncOpenDoor(door.NetworkDoorId, enteringRoom);
     }
 
     void OnEnemyDefeated(GameObject enemy)
@@ -85,5 +103,6 @@ public class RoomController : MonoBehaviour
         _roomCleared = true;
         _roomActive = false;
         Debug.Log("<color=green>Sala completada.</color>");
+        // No abrir puertas aquí — se abren cuando el jugador se acerca
     }
 }

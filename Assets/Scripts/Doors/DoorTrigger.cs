@@ -2,43 +2,38 @@ using UnityEngine;
 
 public class DoorTrigger : MonoBehaviour
 {
-    // Referencias a las dos visagras que tienen DoorsMove
-    [SerializeField] private DoorsMove _doorLeft;
-    [SerializeField] private DoorsMove _doorRight;
+    [HideInInspector] public int NetworkDoorId = -1;
 
-    // La sala a la que pertenece esta puerta
-    // Se asigna automáticamente desde RoomController
-    private RoomController _myRoom;
+    private RoomController _room;
+    private DoorsMove[] _doorsMoves; // Array en lugar de uno solo
 
     public void Init(RoomController room)
     {
-        _myRoom = room;
+        _room = room;
+        _doorsMoves = GetComponentsInChildren<DoorsMove>(); // todos los hijos
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Player")) return;
-        if (_myRoom == null) return;
-        _myRoom.RequestDoorOpen(this);
+        if (_room != null)
+            _room.RequestDoorOpen(this);
     }
 
-    public void OpenDoor(bool inward = false)
+    public void OpenDoor(bool enteringRoom)
     {
-        if (_doorLeft != null)
+        if (_doorsMoves == null) return;
+        foreach (var door in _doorsMoves)
         {
-            if (inward) _doorLeft.OpenInward();
-            else _doorLeft.OpenOutward();
-        }
-        if (_doorRight != null)
-        {
-            if (inward) _doorRight.OpenInward();
-            else _doorRight.OpenOutward();
+            if (enteringRoom) door.OpenInward();
+            else door.OpenOutward();
         }
     }
 
     public void CloseDoor()
     {
-        if (_doorLeft != null) _doorLeft.CloseDoor();
-        if (_doorRight != null) _doorRight.CloseDoor();
+        if (_doorsMoves == null) return;
+        foreach (var door in _doorsMoves)
+            door.CloseDoor();
     }
 }
